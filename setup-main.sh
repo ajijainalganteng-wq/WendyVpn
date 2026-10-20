@@ -59,12 +59,37 @@ else
     exit 1
 fi
 
+# Biner bawaan (ws, ftvpn, udp-mini): files/ berisi biner x86-64,
+# files/arm64/ berisi biner aarch64. BINARCH menjadi segmen path
+# unduhan biner pada fungsi-fungsi install di bawah.
+BINARCH=""
+if [[ "$ARCH" == "aarch64" ]] || [[ "$ARCH" == "arm64" ]]; then
+    BINARCH="arm64/"
+fi
+
 OS_ID=$(grep -w ID /etc/os-release | cut -d'=' -f2 | tr -d '"')
 OS_NAME=$(grep -w PRETTY_NAME /etc/os-release | cut -d'=' -f2 | tr -d '"')
-if [[ "$OS_ID" == "ubuntu" ]] || [[ "$OS_ID" == "debian" ]]; then
+OS_VER=$(grep -w VERSION_ID /etc/os-release | cut -d'=' -f2 | tr -d '"')
+# Gerbang versi: hanya Ubuntu >= 20.04 dan Debian >= 10 yang didukung.
+# Di bawah itu komponen kunci (OpenVPN 2.4, HAProxy 1.8, Python lama)
+# berbeda terlalu jauh sehingga layanan TIDAK dijamin berfungsi,
+# jadi installer berhenti di sini dengan pesan yang jelas.
+os_version_ge() {
+    # os_version_ge <versi-minimum> <versi-os> -> sukses bila versi-os >= minimum
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ]
+}
+OS_SUPPORTED=0
+if [[ "$OS_ID" == "ubuntu" ]] && os_version_ge "20.04" "$OS_VER"; then
+    OS_SUPPORTED=1
+elif [[ "$OS_ID" == "debian" ]] && os_version_ge "10" "$OS_VER"; then
+    OS_SUPPORTED=1
+fi
+if [[ "$OS_SUPPORTED" -eq 1 ]]; then
     print_ok "Your OS Is Supported ( ${green}$OS_NAME${NC} )"
 else
     print_error "Your OS Is Not Supported ( ${YELLOW}$OS_NAME${NC} )"
+    print_error "OS yang didukung: Ubuntu 20.04+ dan Debian 10+."
+    print_error "Silakan gunakan salah satu versi tersebut, lalu jalankan ulang installer."
     exit 1
 fi
 
@@ -149,6 +174,41 @@ elif [ -f ./universal_compat.sh ]; then
     . ./universal_compat.sh
 else
     wget -q -O /tmp/universal_compat.sh "${REPO}universal_compat.sh" 2>/dev/null && . /tmp/universal_compat.sh || true
+fi
+# Fallback bila compat layer gagal dimuat (mis. unduhan gagal): sediakan
+# implementasi minimal agar titik install utama tetap bisa memakai
+# compat_apt_install / compat_apt_try / compat_service.
+if ! command -v compat_apt_install >/dev/null 2>&1; then
+    compat_apt_install() {
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@" \
+            || DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+    }
+fi
+if ! command -v compat_apt_try >/dev/null 2>&1; then
+    compat_apt_try() {
+        local p
+        for p in "$@"; do
+            if apt-cache show "$p" >/dev/null 2>&1 && compat_apt_install "$p" >/dev/null 2>&1; then
+                return 0
+            fi
+        done
+        return 1
+    }
+fi
+if ! command -v compat_service >/dev/null 2>&1; then
+    compat_service() {
+        local action="$1" name="$2"
+        if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+            systemctl "$action" "$name" 2>/dev/null && return 0
+        fi
+        if command -v service >/dev/null 2>&1; then
+            service "$name" "$action" 2>/dev/null && return 0
+        fi
+        if [ -x "/etc/init.d/$name" ]; then
+            "/etc/init.d/$name" "$action" 2>/dev/null && return 0
+        fi
+        return 1
+    }
 fi
 start=$(date +%s)
 secs_to_human() {
@@ -270,7 +330,7 @@ function first_setup() {
 function nginx_install() {
     print_install "MENJALANKAN nginx_install"
     print_install "Setup nginx For OS Is $OS_NAME"
-    apt install -y nginx || print_error "Gagal menginstal nginx."
+    compat_apt_install nginx || print_error "Gagal menginstal nginx."
     print_success "Nginx Installation"
     print_ok "nginx_install SELESAI"
 }
@@ -278,27 +338,33 @@ function nginx_install() {
 function base_package() {
     print_install "MENJALANKAN base_package"
     print_ok "Menginstal paket dasar..."
-    apt install -y zip pwgen openssl socat cron bash-completion figlet 2>/dev/null || apt install -y zip pwgen openssl socat cron bash-completion 2>/dev/null || print_error "Gagal menginstal paket dasar"
-    apt install -y netcat-openbsd 2>/dev/null || apt install -y netcat-traditional 2>/dev/null || apt install -y netcat 2>/dev/null || print_ok "netcat dilewati"
+    compat_apt_install zip pwgen openssl socat cron bash-completion figlet || compat_apt_install zip pwgen openssl socat cron bash-completion || print_error "Gagal menginstal paket dasar"
+    compat_apt_try "netcat-openbsd" "netcat-traditional" "netcat" || print_ok "netcat dilewati"
     print_ok "Memperbarui dan memutakhirkan sistem..."
     apt update -y
     apt upgrade -y
     apt dist-upgrade -y
     print_ok "Menginstal dan mengkonfigurasi chrony..."
-    sudo apt install -y chrony
+    compat_apt_install chrony
     if systemctl list-units --type=service 2>/dev/null | grep -q chronyd.service; then
-        systemctl enable chronyd
-        systemctl restart chronyd
+        compat_service enable chronyd
+        compat_service restart chronyd
     else
-        systemctl enable chrony
-        systemctl restart chrony
+        compat_service enable chrony
+        compat_service restart chrony
     fi
     chronyc sourcestats -v
     chronyc tracking -v
-    apt install ntpdate -y || print_error "Gagal menginstal ntpdate."
-    ntpdate pool.ntp.org
+    # ntpdate adalah paket warisan dan OPSIONAL: sinkronisasi waktu utama
+    # ditangani chrony. Bila suatu saat tidak tersedia di rilis mendatang,
+    # lewati tanpa menggagalkan langkah ini. (Temuan 14)
+    if compat_apt_try "ntpdate"; then
+        ntpdate pool.ntp.org || true
+    else
+        print_ok "ntpdate dilewati (opsional, chrony sudah aktif)."
+    fi
     print_ok "Menginstal utilitas sistem..."
-    apt install sudo -y || print_error "Gagal menginstal sudo."
+    compat_apt_install sudo || print_error "Gagal menginstal sudo."
     sudo apt clean all
     sudo apt autoremove -y
     sudo apt install -y debconf-utils || print_error "Gagal menginstal debconf-utils."
@@ -306,23 +372,31 @@ function base_package() {
     sudo apt remove --purge exim4 -y
     sudo apt remove --purge ufw firewalld -y
     print_ok "Menginstal software-properties-common..."
-    sudo apt install -y --no-install-recommends software-properties-common || print_error "Gagal menginstal software-properties-common."
+    compat_apt_install software-properties-common || print_error "Gagal menginstal software-properties-common."
     if apt-cache show iptables-persistent &>/dev/null; then
         echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
         echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
     fi
     print_ok "Menginstal paket utama..."
-    sudo apt install -y vnstat libnss3-dev libnspr4-dev pkg-config libpam0g-dev libcap-ng-dev libcap-ng-utils libselinux1-dev libcurl4-openssl-dev flex bison make libnss3-tools libevent-dev bc rsyslog dos2unix zlib1g-dev libssl-dev libsqlite3-dev sed dirmngr libxml-parser-perl build-essential gcc g++ python3 htop lsof tar wget curl ruby zip unzip python3-pip libc6 util-linux ca-certificates cmake git screen socat xz-utils dnsutils cron bash-completion ntpdate chrony jq || print_error "Gagal menginstal paket utama."
+    # Dipecah per kelompok logis lewat compat layer: satu nama paket yang
+    # hilang/berubah nama di versi mendatang hanya menggagalkan
+    # kelompoknya, bukan seluruh paket utama sekaligus. (Temuan 8)
+    PKG_UTAMA_LIB="vnstat libnss3-dev libnspr4-dev pkg-config libpam0g-dev libcap-ng-dev libcap-ng-utils libselinux1-dev libcurl4-openssl-dev flex bison make libnss3-tools libevent-dev bc rsyslog dos2unix zlib1g-dev libssl-dev libsqlite3-dev sed dirmngr libxml-parser-perl build-essential gcc g++"
+    PKG_UTAMA_TOOLS="python3 python3-pip htop lsof tar wget curl ruby zip unzip libc6 util-linux ca-certificates cmake git screen socat xz-utils cron bash-completion chrony jq"
+    compat_apt_install $PKG_UTAMA_LIB || print_error "Gagal menginstal kelompok paket utama (library/build)."
+    compat_apt_install $PKG_UTAMA_TOOLS || print_error "Gagal menginstal kelompok paket utama (tools)."
+    # dnsutils adalah paket transisi; di rilis baru namanya bind9-dnsutils
+    compat_apt_try "dnsutils" "bind9-dnsutils" || print_ok "dnsutils/bind9-dnsutils dilewati"
     # netfilter-persistent - nama berbeda antar versi Ubuntu/Debian
-    sudo apt install -y netfilter-persistent 2>/dev/null || sudo apt install -y iptables-persistent 2>/dev/null || print_ok "netfilter/iptables-persistent dilewati"
+    compat_apt_try "netfilter-persistent" "iptables-persistent" || print_ok "netfilter/iptables-persistent dilewati"
     # easy-rsa - tersedia di semua versi, fallback jika tidak ada
-    sudo apt install -y easy-rsa 2>/dev/null || print_ok "easy-rsa dilewati"
-    sudo apt install -y speedtest-cli 2>/dev/null || pip3 install speedtest-cli 2>/dev/null || print_ok "speedtest-cli dilewati"
-    sudo apt install -y msmtp-mta 2>/dev/null || print_ok "msmtp-mta dilewati"
+    compat_apt_try "easy-rsa" || print_ok "easy-rsa dilewati"
+    compat_apt_try "speedtest-cli" || pip3 install speedtest-cli 2>/dev/null || print_ok "speedtest-cli dilewati"
+    compat_apt_try "msmtp-mta" || print_ok "msmtp-mta dilewati"
     # 7zip: coba 7zip dulu (Ubuntu 24+), fallback ke p7zip-full
-    sudo apt install -y 7zip 2>/dev/null || sudo apt install -y p7zip-full 2>/dev/null || print_ok "7zip/p7zip dilewati"
+    compat_apt_try "7zip" "p7zip-full" || print_ok "7zip/p7zip dilewati"
     # shc: opsional
-    sudo apt install -y shc 2>/dev/null || print_ok "shc dilewati"
+    compat_apt_try "shc" || print_ok "shc dilewati"
     print_success "Packet Yang Dibutuhkan"
     print_ok "base_package SELESAI"
 }
@@ -406,6 +480,10 @@ EOF
 
 function install_xray() {
     print_install "MENJALANKAN install_xray"
+    # PERINGATAN: cfg_conf_js/config.json memakai inbound legacy
+    # 'dokodemo-door' yang sudah deprecated di Xray-core. Pin v25.1.30
+    # ini aman; menaikkan pin Xray WAJIB diikuti uji inbound
+    # dokodemo-door karena inbound itu bisa dihapus di rilis mendatang.
     XRAY_VERSION="v25.1.30"
     domainSock_dir="/run/xray"
     ! [ -d "$domainSock_dir" ] && mkdir "$domainSock_dir"
@@ -629,11 +707,20 @@ function ins_vnstat(){
        print_error "Interface jaringan tidak terdeteksi, menggunakan fallback: $NET"
     fi
     print_ok "Interface jaringan yang digunakan: $NET"
-    vnstat -u -i "$NET" || print_ok "Gagal menginisialisasi database vnstat untuk $NET (mungkin sudah ada)."
+    # Inisialisasi database sadar generasi vnStat:
+    # - vnStat 1.x: 'vnstat -u -i <iface>' yang membuat database.
+    # - vnStat 2.x (Debian 11+/Ubuntu 22.04+): opsi -u sudah tidak ada;
+    #   database dikelola daemon, interface didaftarkan via --add.
+    if [[ "${VNSTAT_VERSION%%.*}" == "1" ]]; then
+        vnstat -u -i "$NET" || print_ok "Gagal menginisialisasi database vnstat untuk $NET (mungkin sudah ada)."
+    else
+        vnstat --add -i "$NET" >/dev/null 2>&1 || true
+        print_ok "vnStat ${VNSTAT_VERSION}: database interface $NET dikelola daemon vnstat."
+    fi
     sed -i "s/Interface \"eth0\"/Interface \"$NET\"/g" /etc/vnstat.conf
     chown vnstat:vnstat /var/lib/vnstat -R || print_error "Gagal mengatur ownership untuk /var/lib/vnstat."
-    systemctl enable vnstat || print_error "Gagal mengaktifkan layanan vnstat."
-    systemctl restart vnstat || print_error "Gagal merestart layanan vnstat."
+    compat_service enable vnstat || print_error "Gagal mengaktifkan layanan vnstat."
+    compat_service restart vnstat || print_error "Gagal merestart layanan vnstat."
     print_success "Vnstat"
     print_ok "ins_vnstat SELESAI"
 }
@@ -696,7 +783,7 @@ function ins_Fail2ban(){
 function ins_epro(){
     print_install "MENJALANKAN ins_epro"
     print_ok "Mengunduh komponen ePro WebSocket Proxy..."
-    wget -O /usr/bin/ws "${REPO}files/ws" || print_error "Gagal mengunduh ws binary."
+    wget -O /usr/bin/ws "${REPO}files/${BINARCH}ws" || print_error "Gagal mengunduh ws binary."
     wget -O /usr/bin/tun.conf "${REPO}cfg_conf_js/tun.conf" || print_error "Gagal mengunduh tun.conf."
     wget -O /etc/systemd/system/ws.service "${REPO}files/ws.service" || print_error "Gagal mengunduh ws.service."
     chmod +x /etc/systemd/system/ws.service
@@ -711,7 +798,7 @@ function ins_epro(){
     wget -q -O /usr/local/share/xray/geosite.dat "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat" || print_error "Gagal mengunduh geosite.dat."
     wget -q -O /usr/local/share/xray/geoip.dat "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat" || print_error "Gagal mengunduh geoip.dat."
     print_ok "Mengunduh ftvpn binary..."
-    wget -O /usr/sbin/ftvpn "${REPO}files/ftvpn" || print_error "Gagal mengunduh ftvpn binary."
+    wget -O /usr/sbin/ftvpn "${REPO}files/${BINARCH}ftvpn" || print_error "Gagal mengunduh ftvpn binary."
     chmod +x /usr/sbin/ftvpn
     print_ok "Menerapkan aturan iptables untuk memblokir BitTorrent..."
     iptables -A FORWARD -m string --string "get_peers" --algo bm -j DROP || print_error "Gagal menambahkan aturan iptables 1."
@@ -936,7 +1023,7 @@ EOF
     done
     print_ok "Membuat direktori dan mengunduh udp-mini..."
     mkdir -p /usr/local/kyt/
-    wget -q -O /usr/local/kyt/udp-mini "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/files/udp-mini"
+    wget -q -O /usr/local/kyt/udp-mini "${REPO}files/${BINARCH}udp-mini"
     chmod +x /usr/local/kyt/udp-mini
     print_ok "Mengunduh dan mengelola layanan udp-mini..."
     for i in {1..3}; do
