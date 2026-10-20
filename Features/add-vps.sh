@@ -8,7 +8,7 @@ date_list=$(date +"%Y-%m-%d" -d "$dateFromServer")
 clear
 
 # Konfigurasi repo dan variabel
-Repo1="https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip"
+Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
 
@@ -64,7 +64,7 @@ git init &> /dev/null
 git add . &> /dev/null
 git commit -m "update file" &> /dev/null
 git branch -M main &> /dev/null
-git remote add origin git@github.com:bowowiwendi/ipvps.git
+git remote add origin git@github.com:ajijainalganteng-wq/WendyVpn.git
 git push -f origin main &> /dev/null
 
 # Mengirim log dan membersihkan

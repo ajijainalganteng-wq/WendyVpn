@@ -2,10 +2,10 @@
 export HOME=/root
 export TERM=xterm
 NC='\e[0m'
-Repo1="https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip"
+Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
-git="git@github.com:bowowiwendi/ipvps.git"
+git="git@github.com:ajijainalganteng-wq/WendyVpn.git"
 TIMES="10"
 CHATID=$(grep -E "^#bot# " "/etc/bot/.bot.db" | cut -d ' ' -f 3)
 KEY=$(grep -E "^#bot# " "/etc/bot/.bot.db" | cut -d ' ' -f 2)

@@ -96,7 +96,7 @@ clear
 
 # --- Pengambilan Data Pengguna ---
 MYIP="$ipsaya"
-IPDB=$(curl -fsSL --max-time 15 https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip || true)
+IPDB=$(curl -fsSL --max-time 15 https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip || true)
 rm -f /usr/bin/user
 username=$(echo "$IPDB" | grep -w "$MYIP" | awk '{print $2}')
 if [ -z "$username" ]; then
@@ -130,7 +130,7 @@ mai="datediff "$Exp1" "$DATE""
 Info="(${green}Active${NC})"
 Error="(${RED}ExpiRED${NC})"
 today=`date -d "0 days" +"%Y-%m-%d"`
-Exp1=$(curl -s https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip | grep $MYIP | awk '{print $4}')
+Exp1=$(curl -s https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | grep $MYIP | awk '{print $4}')
 if [[ $today < $Exp1 ]]; then
 sts="${Info}"
 else
@@ -992,8 +992,8 @@ TIMES=30
     fi
     local DATE_FORMAT=$(date '+%d-%m-%Y')
     local TIME_FORMAT=$(date '+%H:%M:%S')
-    local USRSC=$(wget -qO- https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip | grep "$ipsaya" | awk '{print $2}' | head -n 1)
-    local EXPSC=$(wget -qO- https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip | grep "$ipsaya" | awk '{print $3}' | head -n 1)
+    local USRSC=$(wget -qO- https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | grep "$ipsaya" | awk '{print $2}' | head -n 1)
+    local EXPSC=$(wget -qO- https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | grep "$ipsaya" | awk '{print $3}' | head -n 1)
     if [[ -z "$passwd" ]]; then
         local passwd_display="<i>(Tidak diubah/digunakan saat ini)</i>"
     else

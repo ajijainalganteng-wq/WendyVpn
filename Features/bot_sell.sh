@@ -1,7 +1,7 @@
 #!/bin/bash
 function checking_sc() {
     MYIP=$(curl -sS ipv4.icanhazip.com)
-    IZIN=$(curl -sS https://raw.githubusercontent.com/bowowiwendi/ipvps/main/ip | awk '{print $4}')
+    IZIN=$(curl -sS https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | awk '{print $4}')
 
     if echo "$IZIN" | grep -wq "$MYIP"; then
         echo "IZIN DITERIMA "
