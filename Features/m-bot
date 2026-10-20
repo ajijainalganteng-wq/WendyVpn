@@ -111,10 +111,10 @@ echo -e "  \033[1;36m━━━━ Install Bot ────\033[0m"
 step "System update" apt update -y
 step "Install packages" apt install -y python3 python3-pip git
 cd /usr/bin
-step "Download helpers" wget -q "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/bot/bot.zip"
+step "Download helpers" wget -q "https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/bot/bot.zip"
 step "Extract helpers" unzip -o bot.zip
 step "Install helpers" mv bot/* /usr/bin && chmod +x /usr/bin/* && rm -rf bot.zip
-step "Download kyt bot" wget -q "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/bot/kyt.zip"
+step "Download kyt bot" wget -q "https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/bot/kyt.zip"
 step "Extract kyt bot" unzip -o kyt.zip
 step "Clear cache" find /usr/bin/kyt -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 # python3-telethon SENGAJA tidak dipasang via apt (tidak ada di repo Debian/Ubuntu);
@@ -438,10 +438,10 @@ echo -e "  \033[1;36m━━━━ Update Bot ────\033[0m"
 step "System update" apt update -y
 step "Install packages" apt install -y python3 python3-pip git
 cd /usr/bin
- step "Download helpers" wget -q "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/bot/bot.zip"
+ step "Download helpers" wget -q "https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/bot/bot.zip"
  step "Extract helpers" unzip -o bot.zip
  step "Install helpers" mv bot/* /usr/bin && chmod +x /usr/bin/* && rm -rf bot.zip
- step "Download kyt bot" wget -q "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/bot/kyt.zip"
+ step "Download kyt bot" wget -q "https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/bot/kyt.zip"
  step "Extract kyt bot" unzip -o kyt.zip
  step "Clear cache" find /usr/bin/kyt -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
  # python3-telethon SENGAJA tidak dipasang via apt (tidak ada di repo Debian/Ubuntu);

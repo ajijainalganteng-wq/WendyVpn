@@ -86,7 +86,7 @@ function ovpn_install() {
     rm -rf /etc/openvpn
     mkdir -p /etc/openvpn
     # Perbaiki URL dengan menambahkan https://
-    wget -O /etc/openvpn/vpn.zip "https://raw.githubusercontent.com/bowowiwendi/WendyVpn/refs/heads/ABSTRAK/ovpn/vpn.zip" >/dev/null 2>&1
+    wget -O /etc/openvpn/vpn.zip "https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/refs/heads/main/ovpn/vpn.zip" >/dev/null 2>&1
     unzip -d /etc/openvpn/ /etc/openvpn/vpn.zip
     rm -f /etc/openvpn/vpn.zip
     # Sesuaikan direktif cipher dengan versi OpenVPN terpasang (2.4 vs >=2.5)

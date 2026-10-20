@@ -15,7 +15,7 @@ apt update && apt upgrade -y && update-grub && sleep 2 && reboot
 
 ### 2. Install Script
 ```bash
-sysctl -w net.ipv6.conf.all.disable_ipv6=1 && sysctl -w net.ipv6.conf.default.disable_ipv6=1 && apt update -y && apt upgrade -y && apt install -y bzip2 gzip coreutils screen curl unzip && apt install lolcat -y && gem install lolcat && wget -q https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/setup-main.sh && chmod +x setup-main.sh && sed -i -e 's/\r$//' setup-main.sh && screen -S setupku ./setup-main.sh
+sysctl -w net.ipv6.conf.all.disable_ipv6=1 && sysctl -w net.ipv6.conf.default.disable_ipv6=1 && apt update -y && apt upgrade -y && apt install -y bzip2 gzip coreutils screen curl unzip && apt install lolcat -y && gem install lolcat && wget -q https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/setup-main.sh && chmod +x setup-main.sh && sed -i -e 's/\r$//' setup-main.sh && screen -S setupku ./setup-main.sh
 ```
 
 ### 3. Bot Telegram (kyt)
@@ -30,7 +30,7 @@ sysctl -w net.ipv6.conf.all.disable_ipv6=1 && sysctl -w net.ipv6.conf.default.di
 > Dana top-up masuk langsung ke akun GoPay Merchant kamu sendiri.
 > Setiap transaksi lunas memotong Rp500 (kredit prabayar).
 ```bash
-wget https://raw.githubusercontent.com/bowowiwendi/WendyVpn/refs/heads/ABSTRAK/bot/install.sh && chmod +x install.sh && ./install.sh
+wget https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/refs/heads/main/bot/install.sh && chmod +x install.sh && ./install.sh
 ```
 
 
@@ -41,7 +41,7 @@ isi username, bayar QRIS, akun otomatis dibuat. Mendukung **beli baru** dan
 **perpanjang** (SSH: wajib username + password · Xray: wajib nama akun).
 
 ```bash
-wget -q https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/Features/m-store -O m-store
+wget -q https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/Features/m-store -O m-store
 chmod +x m-store && ./m-store
 ```
 
@@ -59,12 +59,12 @@ chmod +x m-store && ./m-store
 
 ### 5. Update Script
 ```bash
-wget https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/files/update.sh && chmod +x update.sh && ./update.sh
+wget https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/files/update.sh && chmod +x update.sh && ./update.sh
 ```
 
 ### 6. Update Script Cepat (tanpa menu, langsung)
 ```bash
-wget -qO- https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/files/update-scripts.sh | bash
+wget -qO- https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/files/update-scripts.sh | bash
 ```
 - Update file script menu saja, tanpa menyentuh layanan VPN
 - Memperbaiki menu lama yang rusak (langsung deploy menu terbaru ke `/usr/local/sbin/`)
