@@ -25,6 +25,7 @@ const kuota = require('./modules/kuota');
 const admin = require('./modules/admin');
 const cleanup = require('./modules/cleanup');
 const sewa = require('./modules/sewa');
+const ipregistry = require('./modules/ipregistry');
 const hc = require('./modules/hc');
 const settings = require('./modules/settings');
 // Grup wajib join & grup notifikasi — dikonfigurasi via panel admin (tabel bot_settings).
@@ -1128,15 +1129,31 @@ bot.action(/^sewa_cek_(.+)$/, async (ctx) => {
   const order = await sewa.getSewaOrder(ref).catch(() => null);
   if (!order) return ctx.reply('❌ Order tidak ditemukan.');
   if (order.status === 'fulfilled') return ctx.reply('✅ Lisensimu sudah aktif!');
-  if (order.status === 'paid') return ctx.reply('✅ Sudah lunas! Lisensi sedang diproses, tunggu notifikasi.');
+  // Registrasi / percobaan ulang registrasi IP ke repo GitHub
+  const doRegister = async () => {
+    const reg = await ipregistry.registerIp(order.username, order.days, order.ip);
+    if (reg.success) {
+      await sewa.markSewaFulfilled(ref, reg.expiry);
+      return ctx.reply(
+        `✅ <b>Lisensi aktif!</b>\n\n` +
+        `👤 Username: <code>${esc(order.username)}</code>\n` +
+        `🌐 IP: <code>${esc(order.ip)}</code>\n` +
+        `📅 Berlaku s.d: <b>${esc(reg.expiry)}</b>\n\n` +
+        `Silakan install / restart script di VPS kamu.`,
+        { parse_mode: 'HTML' }
+      );
+    }
+    return ctx.reply(
+      `✅ <b>Pembayaran diterima!</b>\n\n` +
+      `Registrasi lisensi belum berhasil (${esc(reg.message)}). Tekan tombol cek lagi sebentar, atau hubungi admin.`,
+      { parse_mode: 'HTML', reply_markup: Markup.inlineKeyboard([[sBtn('🔄 Coba Registrasi Lagi', `sewa_cek_${ref}`, 'primary')]]).reply_markup }
+    );
+  };
+  if (order.status === 'paid') return doRegister();
   const st = await sewa.checkSewaPayment(order.payment_id).catch(() => 'unknown');
   if (st === 'paid' || st === 'success' || st === 'settled') {
     await sewa.markSewaPaid(ref);
-    return ctx.reply(
-      `✅ <b>Pembayaran diterima!</b>\n\nLisensi <code>${esc(order.username)}</code> (<code>${esc(order.ip)}</code>) ` +
-      `sedang diproses. Kamu akan dapat notifikasi saat aktif.`,
-      { parse_mode: 'HTML' }
-    );
+    return doRegister();
   }
   await ctx.reply(`⏳ Belum ada pembayaran terdeteksi (status: <code>${esc(st)}</code>).\nScan QRIS dulu, lalu tekan tombol cek lagi.`, { parse_mode: 'HTML' });
 });
