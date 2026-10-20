@@ -8,7 +8,7 @@
 #   /cf-trojan -> Xray Trojan (WS) port 10022
 #   /cf-ssh    -> SSH over WebSocket (wstunnel -> 127.0.0.1:22) port 10023
 # Usage (on VPS with VPN already installed):
-#   bash <(curl -sL https://raw.githubusercontent.com/bowowiwendi/WendyVpn/ABSTRAK/Features/setup-cloudfront-ws.sh)
+#   bash <(curl -sL https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/Features/setup-cloudfront-ws.sh)
 # Idempotent: safe to run multiple times.
 # Reference: vps-utama 103.197.190.101 + CloudFront E125K60UJIWKO4
 # ============================================================================
@@ -35,7 +35,7 @@ if [ "$WSTUN_OK" = "0" ]; then
     GH="github.com"; ER="erebe"; WN="wstunnel"
     URL="https://${GH}/${ER}/${WN}/releases/download/v${WSTUN_VER}/${WN}_${WSTUN_VER}_linux_${WA}.tar.gz"
     echo "download $URL"
-    if wget -q -O /tmp/wstunnel.tgz "$URL" && tar -xzf /tmp/wstunnel.tgz -C /tmp/ && [ -f /tmp/wstunnel ]; then
+    if wget --timeout=30 --tries=2 -q -O /tmp/wstunnel.tgz "$URL" && tar -xzf /tmp/wstunnel.tgz -C /tmp/ && [ -f /tmp/wstunnel ]; then
       install -m 0755 /tmp/wstunnel "$WSTUN_BIN" && rm -f /tmp/wstunnel.tgz /tmp/wstunnel
       WSTUN_OK=1; ok "wstunnel installed"
     else
