@@ -26,7 +26,7 @@ setup_cloudflare_dns() {
     # Pilih zone aktif pertama dari daftar (bisa dioverride via CF_DOMAIN)
     local domain=""
     local zone_id=""
-    local zones=("${CF_DOMAIN:-hamidstore.my.id}" hamidstore.my.id shifastore.my.id)
+    local zones=("${CF_DOMAIN:-satsetvpn.web.id}" satsetvpn.web.id)
     for d in "${zones[@]}"; do
         echo "⏳ Cek zone $d..."
         local response=$(curl --connect-timeout 30 -sLX GET "https://api.cloudflare.com/client/v4/zones?name=$d&status=active" \
