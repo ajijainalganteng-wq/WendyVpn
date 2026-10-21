@@ -489,11 +489,40 @@ function install_xray() {
     ! [ -d "$domainSock_dir" ] && mkdir "$domainSock_dir"
     chown www-data.www-data "$domainSock_dir"
     print_ok "Memaksa menginstal Xray versi: $XRAY_VERSION"
-    bash -c "$(curl --connect-timeout 30 -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" \
-        @ install -u www-data --version "$XRAY_VERSION" || {
-            print_error "Gagal menginstal Xray versi $XRAY_VERSION"
-            exit 1
-        }
+    # Perbaikan (2026-10-21): jangan pakai skrip installer upstream.
+    # Pemanggilan lama ditolak sebagai opsi tidak dikenal ("-") sehingga
+    # install berhenti deterministik sebelum Xray terunduh. Ganti dengan
+    # unduhan langsung aset rilis resmi untuk versi yang dipin.
+    # Metode ini sama seperti rebuild manual VPS uji 2026-10-21 (terbukti).
+    case "$(uname -m)" in
+        x86_64|amd64) XRAY_ZIP="Xray-linux-64.zip" ;;
+        aarch64|arm64) XRAY_ZIP="Xray-linux-arm64-v8a.zip" ;;
+        *) print_error "Arsitektur tidak didukung untuk Xray: $(uname -m)"; exit 1 ;;
+    esac
+    XRAY_URL="https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/${XRAY_ZIP}"
+    rm -f "/tmp/${XRAY_ZIP}"
+    curl --connect-timeout 30 -L -o "/tmp/${XRAY_ZIP}" "$XRAY_URL" || {
+        print_error "Gagal mengunduh Xray $XRAY_VERSION dari $XRAY_URL"
+        exit 1
+    }
+    # Tolak halaman error kecil (bukan zip Xray). Zip asli v25.1.30 >10 MB.
+    XRAY_SIZE=$(stat -c%s "/tmp/${XRAY_ZIP}" 2>/dev/null || echo 0)
+    if [ "$XRAY_SIZE" -lt 10000000 ]; then
+        print_error "Unduhan Xray mencurigakan (ukuran $XRAY_SIZE byte, diduga halaman error)"
+        rm -f "/tmp/${XRAY_ZIP}"
+        exit 1
+    fi
+    mkdir -p /usr/local/bin /usr/local/share/xray
+    rm -rf /tmp/xray-extract
+    unzip -o "/tmp/${XRAY_ZIP}" xray geoip.dat geosite.dat -d /tmp/xray-extract >/dev/null 2>&1 || {
+        print_error "Gagal mengekstrak ${XRAY_ZIP}"
+        exit 1
+    }
+    install -m 755 /tmp/xray-extract/xray /usr/local/bin/xray
+    cp /tmp/xray-extract/geoip.dat /usr/local/share/xray/geoip.dat
+    cp /tmp/xray-extract/geosite.dat /usr/local/share/xray/geosite.dat
+    chmod 644 /usr/local/share/xray/geoip.dat /usr/local/share/xray/geosite.dat
+    rm -rf /tmp/xray-extract "/tmp/${XRAY_ZIP}"
     print_ok "Memverifikasi versi Xray..."
     /usr/local/bin/xray version
     wget --timeout=30 --tries=2 -O /etc/xray/config.json "${REPO}cfg_conf_js/config.json" || print_error "Gagal mengunduh config.json"
