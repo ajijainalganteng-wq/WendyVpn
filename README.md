@@ -1,4 +1,4 @@
-# WendyVpn — Multi-Port VPN Tunnel & Telegram Bot
+# RIPZZ — Multi-Port VPN Tunnel & Telegram Bot
 
 All-in-one VPN tunneling script with Telegram bot management (kyt). Supports SSH, VMess, VLess, Trojan, Shadowsocks, OpenVPN, and SlowDNS.
 
