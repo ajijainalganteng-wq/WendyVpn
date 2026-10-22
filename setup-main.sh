@@ -484,7 +484,9 @@ function install_xray() {
     # 'dokodemo-door' yang sudah deprecated di Xray-core. Pin v25.1.30
     # ini aman; menaikkan pin Xray WAJIB diikuti uji inbound
     # dokodemo-door karena inbound itu bisa dihapus di rilis mendatang.
-    XRAY_VERSION="v24.11.30"
+    # Pin dinaikkan dari v24.11.30 ke v25.1.30 (2026-10-22): versi yang
+    # terbukti jalan di Aji02 dan vps-utama, bukan sekadar komentar.
+    XRAY_VERSION="v25.1.30"
     domainSock_dir="/run/xray"
     ! [ -d "$domainSock_dir" ] && mkdir "$domainSock_dir"
     chown www-data.www-data "$domainSock_dir"
@@ -526,13 +528,27 @@ function install_xray() {
     print_ok "Memverifikasi versi Xray..."
     /usr/local/bin/xray version
     wget --timeout=30 --tries=2 -O /etc/xray/config.json "${REPO}cfg_conf_js/config.json" || print_error "Gagal mengunduh config.json"
+    # JANGAN PERNAH serialisasi ulang config.json dengan JSON tool:
+    # itu menghapus baris komentar marker (#vmess, #vless, #trojan, #ssws,
+    # #vmessgrpc, #vlessgrpc, #trojangrpc, #ssgrpc) yang dipakai skrip
+    # create menu untuk menambah akun baru. Bug 2026-10-22 di Aji02:
+    # marker hilang -> menu create tulis DB + restart, tapi config tidak
+    # berubah, akun baru tidak konek. Verifikasi marker di sini.
+    for _m in '#vmess' '#vless' '#trojan' '#ssws' '#vmessgrpc' '#vlessgrpc' '#trojangrpc'; do
+        grep -q "$_m" /etc/xray/config.json || print_error "Marker Xray hilang dari config.json: $_m"
+    done
     wget --timeout=30 --tries=2 -O /etc/systemd/system/runn.service "${REPO}files/runn.service" || print_error "Gagal mengunduh runn.service"
     domain="$DOMAIN"
     IPVS="$ipsaya"
     print_success "Core Xray $XRAY_VERSION"
     clear
-    curl --connect-timeout 30 -s ipinfo.io/city >>/etc/xray/city
-    curl --connect-timeout 30 -s ipinfo.io/org | cut -d " " -f 2-10 >>/etc/xray/isp
+    # File lokasi menu (menu cat /etc/xray/isp dan /etc/xray/city).
+    # Pakai timpa (>) + fallback, bukan tambah (>>): kalau curl gagal atau
+    # installer diulang, file tidak kosong dan tidak berlipat ganda.
+    _city=$(curl --connect-timeout 30 -s ipinfo.io/city); [ -n "$_city" ] || _city="Unknown"
+    printf '%s' "$_city" > /etc/xray/city
+    _isp=$(curl --connect-timeout 30 -s ipinfo.io/org | cut -d " " -f 2-10); [ -n "$_isp" ] || _isp="Unknown"
+    printf '%s' "$_isp" > /etc/xray/isp
     print_install "Memasang Konfigurasi Packet"
     wget --timeout=30 --tries=2 -O /etc/haproxy/haproxy.cfg "${REPO}cfg_conf_js/haproxy.cfg" || print_error "Gagal mengunduh haproxy.cfg."
     wget --timeout=30 --tries=2 -O /etc/nginx/conf.d/xray.conf "${REPO}cfg_conf_js/xray.conf" || print_error "Gagal mengunduh xray.conf."
