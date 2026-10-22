@@ -484,7 +484,7 @@ function install_xray() {
     # 'dokodemo-door' yang sudah deprecated di Xray-core. Pin v25.1.30
     # ini aman; menaikkan pin Xray WAJIB diikuti uji inbound
     # dokodemo-door karena inbound itu bisa dihapus di rilis mendatang.
-    XRAY_VERSION="v25.1.30"
+    XRAY_VERSION="v24.11.30"
     domainSock_dir="/run/xray"
     ! [ -d "$domainSock_dir" ] && mkdir "$domainSock_dir"
     chown www-data.www-data "$domainSock_dir"
