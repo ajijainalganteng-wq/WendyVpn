@@ -56,15 +56,19 @@ async function createSewaOrder(telegramId, username, ip, days) {
     [telegramId, username, ip, days, pkg.price, ref, data.id, 'pending']
   );
 
-  const qrUrl = `${gatewayUrl}/api/qr/${data.id}.png`;
+  // qrImage dari gateway sudah tenant-aware: /api/qr/<tenantId>/<id>.png.
+  // Jangan membangun URL QR tanpa tenantId (itu 404 untuk payment tenant).
+  const qrUrl = data.qrImage ? `${gatewayUrl}${data.qrImage}` : null;
   let qrBuffer = null;
-  try {
-    const qrRes = await axios.get(qrUrl, {
-      responseType: 'arraybuffer', timeout: 20000,
-      headers: { 'X-API-Key': apiKey },
-    });
-    qrBuffer = Buffer.from(qrRes.data);
-  } catch (e) {}
+  if (qrUrl) {
+    try {
+      const qrRes = await axios.get(qrUrl, {
+        responseType: 'arraybuffer', timeout: 20000,
+        headers: { 'X-API-Key': apiKey },
+      });
+      qrBuffer = Buffer.from(qrRes.data);
+    } catch (e) {}
+  }
 
   return {
     success: true, ref, paymentId: data.id,

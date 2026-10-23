@@ -99,6 +99,13 @@ async function deductSaldo(telegramId, amount) {
 }
 
 // ---------- Deposit via QRIS P2P Gateway ----------
+// Cache qrUrl per paymentId (memori proses) agar deposit pending yang dipakai
+// ulang (<30 menit) tetap dapat URL QR tenant-aware tanpa membuat payment baru.
+// QR gateway bersifat tenant-aware: /api/qr/<tenantId>/<id>.png — URL tanpa
+// tenantId jatuh ke master dan 404 untuk payment tenant lain. Jangan pernah
+// membangun URL QR tanpa tenantId.
+const qrUrlCache = new Map();
+
 async function createDeposit(telegramId, amount) {
   const { gatewayUrl, apiKey } = config.p2p;
   if (!apiKey) return { success: false, message: '❌ Gateway QRIS belum dikonfigurasi.' };
@@ -109,9 +116,10 @@ async function createDeposit(telegramId, amount) {
        AND payment_id != '' AND created_at > datetime('now','-30 minutes')
      ORDER BY id DESC LIMIT 1`,
     [telegramId]).catch(() => null);
-  let ref, paymentId;
+  let ref, paymentId, qrUrl = null;
   if (existing) {
     ref = existing.ref_id; paymentId = existing.payment_id; amount = existing.amount;
+    qrUrl = qrUrlCache.get(paymentId) || null;
   } else {
     ref = refId('DEP');
     const { data } = await axios.post(
@@ -123,16 +131,24 @@ async function createDeposit(telegramId, amount) {
       return { success: false, message: '❌ Gagal membuat QRIS deposit.' };
     }
     paymentId = data.id;
+    // qrImage dari gateway sudah tenant-aware: /api/qr/<tenantId>/<id>.png
+    if (data.qrImage) {
+      qrUrl = gatewayUrl + data.qrImage;
+      qrUrlCache.set(paymentId, qrUrl);
+    }
     await run('INSERT INTO transactions (telegram_id, type, amount, ref_id, payment_id, status) VALUES (?,?,?,?,?,?)',
       [telegramId, 'deposit', amount, ref, paymentId, 'pending']);
   }
-  const qrUrl = gatewayUrl + '/api/qr/' + paymentId + '.png';
+  // qrUrl hanya dari qrImage gateway (tenant-aware) atau cache reuse; bila tidak
+  // ada, jangan fallback ke URL tanpa tenant (itu 404 untuk payment tenant).
   let qrBuffer = null;
-  try {
-    const qrRes = await axios.get(qrUrl, { responseType: 'arraybuffer', timeout: 20000,
-      headers: { 'X-API-Key': apiKey } });
-    qrBuffer = Buffer.from(qrRes.data);
-  } catch (e) {}
+  if (qrUrl) {
+    try {
+      const qrRes = await axios.get(qrUrl, { responseType: 'arraybuffer', timeout: 20000,
+        headers: { 'X-API-Key': apiKey } });
+      qrBuffer = Buffer.from(qrRes.data);
+    } catch (e) {}
+  }
   return { success: true, ref, amount, paymentId, qrBuffer, qrUrl };
 }
 
@@ -156,7 +172,7 @@ async function buyProduct(telegramId, buyerSkuCode, customerNo, priceSell) {
           `<blockquote>📦 Produk: <code>${esc(buyerSkuCode)}</code>\n` +
           `📱 Tujuan: <code>${esc(customerNo)}</code>\n` +
           `💰 Harga: <b>${digi.rp(priceSell)}</b>\n` +
-          `<blockquote>🧾 Ref: <code>${ref}</code>\n` +
+          `🧾 Ref: <code>${ref}</code>\n` +
           `🔑 SN: <code>${esc(res.sn || '-')}</code></blockquote>`,
       };
     }
@@ -168,7 +184,7 @@ async function buyProduct(telegramId, buyerSkuCode, customerNo, priceSell) {
         message:
           `⏳ <b>Transaksi Pending</b>\n` +
           `━━━━━━━━━━━━━━━━━━\n` +
-          `🧾 Ref: <code>${ref}</code>\n\n` +
+          `<blockquote>🧾 Ref: <code>${ref}</code>\n\n` +
           `Cek status: <code>/cekorder ${ref}</code></blockquote>`,
       };
     }
@@ -195,7 +211,7 @@ async function checkOrder(ref) {
         `📦 <b>Status Order</b>\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
         `<blockquote>🧾 Ref: <code>${esc(cleanRef)}</code>\n` +
-        `📌 Status: <b>${esc(tx.status)}</b>`,
+        `📌 Status: <b>${esc(tx.status)}</b></blockquote>`,
     };
   }
   try {
@@ -211,7 +227,7 @@ async function checkOrder(ref) {
       message:
         `📦 <b>Status Order</b>\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `🧾 Ref: <code>${esc(cleanRef)}</code>\n` +
+        `<blockquote>🧾 Ref: <code>${esc(cleanRef)}</code>\n` +
         `📌 Status: <b>${esc(final)}</b></blockquote>` +
         (final === 'failed' ? `\n💰 Saldo dikembalikan.` : ``),
     };
@@ -229,6 +245,12 @@ const PULSA_CATS = ['pulsa', 'data'];
 // Pemetaan tombol kategori → filter produk.
 // Prioritas: field `category` Digiflazz; fallback: keyword di category/brand/product_name.
 const norm = (s) => String(s || '').toLowerCase();
+// Brand operator: paket data/kuota operator yang namanya mengandung kata Game
+// TIDAK masuk kategori Game (tetap ada di Kuota/Voucher), kecuali kategorinya
+// memang Games. Ini mencegah tombol TELKOMSEL/XL/AXIS/dll di menu Game.
+const TELCO_BRANDS = ['telkomsel', 'indosat', 'xl', 'axis', 'tri', 'smartfren', 'by.u'];
+const isTelcoBrand = (p) => TELCO_BRANDS.includes(String(p.brand || '').toLowerCase().trim());
+const isGamesCat = (p) => ['games', 'game'].includes(norm(p.category));
 const hasKw = (p, ...kws) => {
   const hay = `${p.category || ''} ${p.brand || ''} ${p.product_name || ''}`.toLowerCase();
   return kws.some((k) => hay.includes(k));
@@ -238,7 +260,7 @@ const CATEGORY_GROUPS = {
   'voucher':   { title: '🎫 <b>Voucher</b>',        match: (p) => norm(p.category) === 'voucher' || hasKw(p, 'voucher') },
   'kuota':     { title: '📶 <b>Kuota / Paket Data</b>', match: (p) => ['data'].includes(norm(p.category)) || hasKw(p, 'kuota', 'paket data', 'internet') },
   'e-money':   { title: '💳 <b>E-Money</b>',        match: (p) => norm(p.category) === 'e-money' || hasKw(p, 'e-money', 'emoney', 'e money', 'ovo', 'gopay', 'dana', 'shopeepay', 'linkaja') },
-  'game':      { title: '🎮 <b>Game</b>',           match: (p) => ['games', 'game'].includes(norm(p.category)) || hasKw(p, 'game', 'games', 'mobile legend', 'free fire', 'pubg', 'diamond', 'voucher game') },
+  'game':      { title: '🎮 <b>Game</b>',           match: (p) => (isGamesCat(p) || hasKw(p, 'game', 'games', 'mobile legend', 'free fire', 'pubg', 'diamond', 'voucher game')) && (!isTelcoBrand(p) || isGamesCat(p)) },
   'gas':       { title: '🔥 <b>Gas</b>',            match: (p) => norm(p.category) === 'gas' || hasKw(p, 'gas') },
   'masa-aktif':{ title: '📅 <b>Masa Aktif</b>',     match: (p) => hasKw(p, 'masa aktif', 'masaaktif', 'perpanjangan masa') },
   'sms-telp':  { title: '📞 <b>SMS & Telp</b>',     match: (p) => hasKw(p, 'sms', 'telpon', 'telepon', 'paket sms', 'nelpon') },
@@ -423,7 +445,19 @@ async function productList(group, page = 1, opts = {}) {
     items = filterByProvider(items, defs, provider);
   }
 
+  // Urutan rapi: brand lalu nama produk (alfabetis, case-insensitive),
+  // SEBELUM pagination, supaya daftar tidak tercampur urutan sync Digiflazz.
+  // Filter kategori tidak diubah (termasuk filter Game).
   items = items
+    .slice()
+    .sort((a, b) => {
+      const ba = String(a.brand || '').toLowerCase();
+      const bb = String(b.brand || '').toLowerCase();
+      if (ba !== bb) return ba < bb ? -1 : 1;
+      const na = String(a.product_name || '').toLowerCase();
+      const nb = String(b.product_name || '').toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    })
     .slice(0, 100)
     .map((p) => { p.price_sell = sellPriceOf(p); return p; });
   if (!items.length) return { success: false, message: '❌ Produk tidak ditemukan.' };
