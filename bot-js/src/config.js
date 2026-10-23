@@ -12,7 +12,7 @@ const num = (v, d) => {
 
 module.exports = {
   botToken: process.env.BOT_TOKEN || '',
-  adminId: num(process.env.ADMIN_ID, 5162695441),
+  adminId: num(process.env.ADMIN_ID, 6577966386),
 
   vpn: {
     apiBase: (process.env.VPN_API_BASE || 'http://127.0.0.1:5888').replace(/\/$/, ''),
@@ -54,15 +54,15 @@ module.exports = {
   dbPath: process.env.DB_PATH || require('path').join(__dirname, '../data/bot.db'),
 
   // ===== Kompatibilitas PPOB Aji (registerPPOB) =====
-  admins: [String(num(process.env.ADMIN_ID, 5162695441))],
-  botName: 'Wendi VPN',
+  admins: [String(num(process.env.ADMIN_ID, 6577966386))],
+  botName: 'RIPZZ VPN',
   channelId: process.env.CHANNEL_ID || '',
-  groupId: -1002068435369,
+  groupId: '', // Grup Aji diatur via panel admin; kosong = tidak ada grup bawaan
   pageSize: 10,
   paymentPollMs: 5000,
   qrisExpireMinutes: 30,
   requiredChannelId: '',
-  requiredChannelUrl: 'https://t.me/Wendi_VPN',
+  requiredChannelUrl: '', // Channel Aji diatur via panel admin; kosong = tidak ada channel wajib bawaan,
   roles: ['bronze', 'silver', 'gold'],
   storePhoto: '',
   syncMinutes: 60,

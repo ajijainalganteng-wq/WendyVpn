@@ -1,5 +1,5 @@
 // ============================================================
-// 🤖 WENDI VPN BOT (@IdWendi_bot)
+// 🤖 RIPZZ VPN BOT (@Notif2Ajibot)
 // Bot Telegram VPN + PPOB — Node.js + Telegraf
 //
 // Fitur:
@@ -16,8 +16,8 @@ const path = require('path');
 const { Telegraf, Markup } = require('telegraf');
 const config = require('./src/config');
 // Grup wajib join & grup notifikasi
-const GROUP_WAJIB = '@Wendi_VPN';
-const GROUP_NOTIF = -1002068435369; // ID grup Wendi_VPN
+const GROUP_WAJIB = ''; // Grup wajib diatur via panel admin; kosong = tidak ada grup wajib bawaan
+const GROUP_NOTIF = ''; // ID grup notifikasi diatur via panel admin; kosong = notifikasi grup nonaktif
 const { init: initDb } = require('./src/db');
 const vpn = require('./modules/vpn');
 const ppob = require('./modules/ppob');
@@ -244,7 +244,7 @@ async function buildWelcomeCaption(ctx) {
   const cnt = await get('SELECT COUNT(*) AS n FROM users').catch(() => ({ n: 0 }));
   const { waktu, tanggal } = wibParts();
   const username = ctx.from.username ? '@' + ctx.from.username : '-';
-  return `SELAMAT DATANG DI WENDI STORE 💎
+  return `SELAMAT DATANG DI RIPZZ STORE 💎
 NIKMATI PENGALAMAN MEMBELI AKUN VPN
 TERCEPAT, AMAN, DAN OTOMATIS 🚀
 
@@ -261,10 +261,10 @@ TERCEPAT, AMAN, DAN OTOMATIS 🚀
 ⌚ BOT AKTIF: ${botUptime()}
 
 ☎️ HUBUNGI ADMIN
-📩 @WendiWibowo</blockquote>
+📩 @Notif2Ajibot</blockquote>
 
 📦 ─────────── 📦
-🌐 DIKELOLA OLEH WENDI STORE NETWORK
+🌐 DIKELOLA OLEH RIPZZ STORE NETWORK
 📦 ─────────── 📦`;
 }
 
@@ -774,7 +774,7 @@ bot.on('text', async (ctx) => {
     if (!await admin.hasAdminAccess(ctx)) { sessions.delete(chatId); return ctx.reply('❌ Khusus admin.'); }
     sess.data.nama = nama;
     sess.step = 'adm_addserver_domain';
-    return ctx.reply(`➕ <b>Tambah Server</b>\n\nNama: <b>${esc(nama)}</b>\n\nKetik <b>domain server</b> (contoh: sg1.wendivpn.my.id):`, { parse_mode: 'HTML' });
+    return ctx.reply(`➕ <b>Tambah Server</b>\n\nNama: <b>${esc(nama)}</b>\n\nKetik <b>domain server</b> (contoh: sgdo2.satsetvpn.web.id):`, { parse_mode: 'HTML' });
   }
 
   // Tambah server: domain
@@ -1399,7 +1399,7 @@ bot.action('menu_ppob', async (ctx) => {
   const saldo = await ppob.getSaldo(ctx.from.id);
   const role = await ppob.getRole(ctx.from.id).catch(() => 'member');
   await sendMenuPhoto(ctx, 'banner-ppob.webp',
-    `🛒 <b>PPOB WENDI STORE</b>
+    `🛒 <b>PPOB RIPZZ STORE</b>
 Belanja kebutuhan digital otomatis — cepat, aman & 24 jam.
 
 ` +
@@ -1640,7 +1640,7 @@ bot.command('produk', async (ctx) => {
 
 bot.command('beli', async (ctx) => {
   const [, kode, tujuan] = ctx.message.text.split(' ');
-  if (!kode || !tujuan) return ctx.reply('Contoh: <code>/beli TLKM5 083153170199</code>', { parse_mode: 'HTML' });
+  if (!kode || !tujuan) return ctx.reply('Contoh: <code>/beli TLKM5 087862591220</code>', { parse_mode: 'HTML' });
   const list = await ppob.productList().catch(() => ({ items: [] }));
   const prodItems = Array.isArray(list.items) ? list.items : [];
   const prod = prodItems.find((p) => p && p.buyer_sku_code && p.buyer_sku_code.toUpperCase() === kode.toUpperCase());
@@ -1661,7 +1661,7 @@ bot.action('menu_riwayat', async (ctx) => {
 bot.action('menu_kuota', async (ctx) => {
   await safeCb(ctx);
   sessions.set(ctx.chat.id, { step: 'kuota_nomor' });
-  await ctx.reply('📡 Kirim <b>nomor HP</b> (contoh: 083153170199):', { parse_mode: 'HTML', ...cancelKb() });
+  await ctx.reply('📡 Kirim <b>nomor HP</b> (contoh: 087862591220):', { parse_mode: 'HTML', ...cancelKb() });
 });
 
 // ---------- Statistik (admin lihat global, user lihat ringkas) ----------
@@ -2467,7 +2467,7 @@ bot.action('adm_fj_channel', async (ctx) => {
   sessions.set(ctx.chat.id, { step: 'adm_fj_channel', data: {} });
   await ctx.reply(
     `📢 <b>Set Channel Wajib Join</b>\n\nKetik dengan format:\n<code>ID | link_undangan</code>\n` +
-    `Contoh: <code>@Wendi_Channel | https://t.me/Wendi_Channel</code>\n\n` +
+    `Contoh: <code>@Notif2Ajibot | https://t.me/Notif2Ajibot</code>\n\n` +
     `Kosongkan ID (ketik <code>-</code>) untuk menonaktifkan cek channel.`,
     { parse_mode: 'HTML', ...cancelKb() }
   );
@@ -2479,7 +2479,7 @@ bot.action('adm_fj_group', async (ctx) => {
   sessions.set(ctx.chat.id, { step: 'adm_fj_group', data: {} });
   await ctx.reply(
     `👥 <b>Set Grup Wajib Join</b>\n\nKetik dengan format:\n<code>ID | link_undangan</code>\n` +
-    `Contoh: <code>-1001234567890 | https://t.me/Wendi_VPN</code>\n\n` +
+    `Contoh: <code>-1001234567890 | https://t.me/Notif2Ajibot</code>\n\n` +
     `Kosongkan ID (ketik <code>-</code>) untuk menonaktifkan cek grup.`,
     { parse_mode: 'HTML', ...cancelKb() }
   );
@@ -2771,7 +2771,7 @@ bot.command('restoredb', async (ctx) => {
 });
 
 bot.launch();
-  console.log('🤖 Bot Wendi berjalan (@IdWendi_bot)');
+  console.log('🤖 Bot RIPZZ berjalan (@Notif2Ajibot)');
 })();
 
 process.once('SIGINT', () => bot.stop('SIGINT'));

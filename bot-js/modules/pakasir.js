@@ -73,7 +73,7 @@ async function createPayment(amount, orderId, method = 'qris') {
     const { data } = await axios.post(
       `${BASE_URL}/api/transactioncreate/${method}`,
       { project: c.slug, order_id: orderId, amount, api_key: c.api_key },
-      { timeout: TIMEOUT, headers: { 'User-Agent': 'wendi-bot-js/1.0' } }
+      { timeout: TIMEOUT, headers: { 'User-Agent': 'ripzz-bot-js/1.0' } }
     );
     const p = data?.payment || data || {};
     return {
@@ -98,7 +98,7 @@ async function checkStatus(orderId, amount) {
     const { data } = await axios.get(`${BASE_URL}/api/transactiondetail`, {
       params: { project: c.slug, order_id: orderId, amount, api_key: c.api_key },
       timeout: TIMEOUT,
-      headers: { 'User-Agent': 'wendi-bot-js/1.0' },
+      headers: { 'User-Agent': 'ripzz-bot-js/1.0' },
     });
     const t = data?.transaction || data || {};
     const st = String(t.status || '').toLowerCase();
@@ -117,7 +117,7 @@ async function cancelPayment(orderId, amount) {
     const { data } = await axios.post(
       `${BASE_URL}/api/transactioncancel`,
       { project: c.slug, order_id: orderId, amount, api_key: c.api_key },
-      { timeout: TIMEOUT, headers: { 'User-Agent': 'wendi-bot-js/1.0' } }
+      { timeout: TIMEOUT, headers: { 'User-Agent': 'ripzz-bot-js/1.0' } }
     );
     return { success: true, raw: data?.transaction || data };
   } catch (e) { throw apiError(e); }

@@ -27,7 +27,7 @@ async function cekKuota(msisdn) {
   const nomor = String(msisdn || '').replace(/\D/g, '');
   const bersih = nomor.startsWith('62') ? '0' + nomor.slice(2) : nomor;
   if (!/^08\d{8,13}$/.test(bersih)) {
-    return { success: false, message: '❌ Format nomor salah.\nContoh: <code>083153170199</code>' };
+    return { success: false, message: '❌ Format nomor salah.\nContoh: <code>087862591220</code>' };
   }
   try {
     const headers = {

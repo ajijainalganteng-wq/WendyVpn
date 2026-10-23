@@ -1,7 +1,7 @@
-# 🤖 Wendi VPN Bot (@IdWendi_bot)
+# 🤖 RIPZZ VPN Bot (@Notif2Ajibot)
 
 Bot Telegram VPN + PPOB berbasis Node.js + Telegraf.
-Arsitektur terinspirasi BotVPN2, disesuaikan untuk Wendi.
+Arsitektur terinspirasi BotVPN2, disesuaikan untuk Aji (RIPZZ STORE).
 
 ## Fitur
 
@@ -38,7 +38,7 @@ Arsitektur terinspirasi BotVPN2, disesuaikan untuk Wendi.
 
 ```bash
 # 1. Masuk direktori
-cd wendi-bot-js
+cd ripzz-bot-js
 
 # 2. Install dependencies (butuh Node.js >= 18)
 npm install
@@ -55,33 +55,33 @@ npm start
 
 ```bash
 npm install -g pm2
-pm2 start app.js --name wendi-bot
+pm2 start app.js --name aji-bot
 pm2 save
 pm2 startup
 ```
 
-## Yang perlu disiapkan Wendi
+## Yang perlu disiapkan Aji
 
-1. **BOT_TOKEN** — token baru dari @BotFather (atau pakai token @IdWendi_bot yang lama;
+1. **BOT_TOKEN** — token baru dari @BotFather untuk @Notif2Ajibot (jangan pakai token bot lain;
    catatan: bot lama Python harus dimatikan dulu agar tidak rebutan token / 409 Conflict)
-2. **ADMIN_ID** — sudah diisi `5162695441`
+2. **ADMIN_ID** — sudah diisi `6577966386`
 3. **VPN_API_BASE** — base URL API server VPN (format endpoint mengikuti pola
    `/createshh`, `/createvmess`, `/createvless`, `/createtrojan`, `/renew`, `/delete`
    seperti yang dipakai BotVPN2 di port 5888). Sesuaikan bila API di server beda.
 4. **CloudFront** — `CF_DOMAIN`, `CF_VMESS_UUID`, `CF_VLESS_UUID`, `CF_TROJAN_PASSWORD`
-   (kredensial yang sudah dibuat saat setup VPS Aji; untuk server Wendi isi sesuai
+   (kredensial yang sudah dibuat saat setup VPS Aji; untuk server lain isi sesuai
    kredensial CF di server masing-masing)
 5. **Digiflazz** — `DIGIFLAZZ_USERNAME` + `DIGIFLAZZ_API_KEY` (untuk PPOB;
-   akun masih Development Mode — Wendi menunda switch ke production)
+   akun Digiflazz Aji (isi sesuai akun Aji))
 6. **P2P Gateway** — `P2P_API_KEY` (untuk deposit QRIS via p2p.shifastore.my.id)
-7. **Sidompul** — `SIDOMPUL_API_KEY` (untuk cek kuota; Wendi bilang API `#kuota` selalu diizinkan)
+7. **Sidompul** — `SIDOMPUL_API_KEY` (untuk cek kuota)
 
 ## Perintah user
 
 - `/start` — menu utama
 - `/saldo` — cek saldo
 - `/produk` — daftar produk PPOB
-- `/beli KODE TUJUAN` — beli pulsa/paket (contoh: `/beli TLKM5 083153170199`)
+- `/beli KODE TUJUAN` — beli pulsa/paket (contoh: `/beli TLKM5 087862591220`)
 - `/cekorder REFID` — cek status order
 
 ## Perintah admin

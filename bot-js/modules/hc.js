@@ -17,7 +17,7 @@ const HC_PATHS = {
 };
 
 // Preset payload SSH (disalin dari /opt/vpnstore/app.py DEFAULT_HC_PRESETS)
-// + 10 preset baru dari Wendi (2026-10-20)
+// + 10 preset baru (2026-10-20)
 const HC_PRESETS = {
   default: {
     label: 'Default',
@@ -38,7 +38,7 @@ const HC_PRESETS = {
     sni: '',
     ssh_port: 443,
   },
-  // --- Preset baru Wendi 2026-10-20 ---
+  // --- Preset baru 2026-10-20 ---
   iflix: {
     label: 'IFLIX',
     payload: '',

@@ -8,7 +8,7 @@ const { esc } = require('../src/format');
 
 // ============================================================
 // ROLE:
-//  - admin/owner : hanya config.adminId (Wendi). Semua command sensitif
+//  - admin/owner : hanya config.adminId (Aji). Semua command sensitif
 //    (broadcast, tambah saldo, sewa list, statistik, dsb) wajib lewat
 //    isAdmin() / isOwner().
 //  - user        : semua pengguna Telegram lainnya. Hanya bisa pakai
