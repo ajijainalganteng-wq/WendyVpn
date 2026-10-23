@@ -218,12 +218,23 @@ echo "Installation time : $((${1} / 3600)) hours $(((${1} / 60) % 60)) minute's 
 # --- Fungsi Helper ---
 
 # --- DEFINISIKAN VARIABEL GLOBAL DOMAIN ---
-DOMAIN=""
+DOMAIN="${DOMAIN:-}"  # 2026-10-23 xmr12: jangan reset argumen domain (argumen dibuang -> acak baru tiap run)
 
 # --- FUNGSI pasang_domain DIMODIFIKASI ---
 function pasang_domain() {
     print_install "MENJALANKAN pasang_domain"
     clear
+    # 2026-10-23 xmr12: pakai /root/domain yang sudah ada dulu, jangan buat subdomain acak baru tiap run
+    if [ -z "$DOMAIN" ] && [ -s /root/domain ]; then
+        DOMAIN=$(cat /root/domain)
+        mkdir -p /etc/xray
+        echo "$DOMAIN" > /etc/xray/domain
+        echo "$DOMAIN" > /root/domain
+        echo "$DOMAIN" > /root/scdomain
+        print_ok "Domain dari /root/domain dipakai ulang: $DOMAIN"
+        print_ok "pasang_domain SELESAI"
+        return
+    fi
     
     # Jika domain sudah diset dari argumen, gunakan itu
     if [ -n "$DOMAIN" ]; then
@@ -322,6 +333,9 @@ function first_setup() {
     print_ok "Setup Dependencies $OS_NAME"
     sudo apt update -y
     print_ok "Installing haproxy..."
+    # 2026-10-23 xmr12: build sumber tidak membuat user/group seperti paket apt; buat dulu sebelum validasi config
+    getent group haproxy >/dev/null 2>&1 || groupadd -r haproxy 2>/dev/null || true
+    getent passwd haproxy >/dev/null 2>&1 || useradd -r -g haproxy -s /usr/sbin/nologin haproxy 2>/dev/null || true
     # HAProxy DIPIN 2.0.33 (terbukti di Aji02 + vps-utama 2026-10-23): apt stok
     # Ubuntu 24.04 memberi 2.8, di mana opsi http-tunnel fatal dan payload
     # SSH gagal 301 lalu 400. Bila haproxy terpasang >= 2.1, build 2.0.33
@@ -336,6 +350,23 @@ function first_setup() {
         cd /tmp && wget -q https://www.haproxy.org/download/2.0/src/haproxy-2.0.33.tar.gz && tar xzf haproxy-2.0.33.tar.gz && cd haproxy-2.0.33 && make -j"$(nproc)" TARGET=linux-glibc USE_OPENSSL=1 USE_ZLIB=1 USE_PCRE=1 USE_SYSTEMD=1 >/dev/null 2>&1 && cp haproxy /usr/sbin/haproxy || print_error "Gagal build/install HAProxy 2.0.33."
         cd /root || true
     fi
+    # 2026-10-23 xmr12: build sumber tidak membuat unit systemd; buat unitnya di sini, enable/start dilakukan tahap enable_services
+    mkdir -p /etc/systemd/system
+    cat > /etc/systemd/system/haproxy.service <<'HAPROXYUNIT'
+[Unit]
+Description=HAProxy Load Balancer
+After=network.target
+[Service]
+Type=notify
+ExecStartPre=/usr/sbin/haproxy -c -f /etc/haproxy/haproxy.cfg
+ExecStart=/usr/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid
+ExecReload=/bin/kill -USR2 $MAINPID
+KillMode=mixed
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+HAPROXYUNIT
+    systemctl daemon-reload 2>/dev/null || true
     print_success "HAProxy Installation"
     print_ok "first_setup SELESAI"
 }
@@ -420,6 +451,17 @@ function pasang_ssl() {
     rm -rf /etc/xray/xray.crt
     domain="$DOMAIN"
     print_ok "Domain untuk SSL: $domain"
+    # 2026-10-23 xmr12: pakai sertifikat DNS-01 yang sudah ada bila ada, jangan hapus /root/.acme.sh dulu
+    if ls "/root/.acme.sh/${domain}_ecc/fullchain.cer" >/dev/null 2>&1; then
+        mkdir -p /etc/xray /etc/haproxy
+        cp "/root/.acme.sh/${domain}_ecc/fullchain.cer" /etc/xray/xray.crt
+        cp "/root/.acme.sh/${domain}_ecc/${domain}.key" /etc/xray/xray.key
+        chmod 600 /etc/xray/xray.key
+        cat /etc/xray/xray.crt /etc/xray/xray.key > /etc/haproxy/hap.pem
+        chmod 600 /etc/haproxy/hap.pem
+        print_ok "pasang_ssl SELESAI (sertifikat DNS-01 yang sudah ada dipakai ulang)"
+        return
+    fi
     STOPWEBSERVER=$(lsof -i:80 | cut -d' ' -f1 | awk 'NR==2 {print $1}')
     rm -rf /root/.acme.sh
     mkdir /root/.acme.sh
@@ -431,6 +473,34 @@ function pasang_ssl() {
     chmod +x /root/.acme.sh/acme.sh
     /root/.acme.sh/acme.sh --upgrade --auto-upgrade || print_error "Gagal memutakhirkan acme.sh."
     /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt || print_error "Gagal mengatur CA default untuk acme.sh."
+    # 2026-10-23 xmr12: registrasi acme jangan pakai email bawaan acme@localhost (ditolak LE);
+    # pakai email akun Cloudflare dari /root/.cf_key bila ada.
+    if [ -f /root/.cf_key ]; then
+        . /root/.cf_key
+        if [ -n "${CF_ID:-}" ]; then
+            /root/.acme.sh/acme.sh --register-account -m "$CF_ID" 2>/dev/null || true
+        fi
+    fi
+    # Fallback DNS-01 Cloudflare: IP publik VPS NAT tidak stabil, HTTP-01 tidak bisa diandalkan.
+    # Bila /root/.cf_key ada, coba DNS-01 dulu; bila berhasil, pasang dan selesai tanpa HTTP-01.
+    if [ -f /root/.cf_key ]; then
+        . /root/.cf_key
+        if [ -n "${CF_KEY:-}" ]; then
+            export CF_Key="$CF_KEY"
+            export CF_Email="${CF_ID:-}"
+            if /root/.acme.sh/acme.sh --issue -d "$domain" --dns dns_cf -k ec-256 2>/dev/null; then
+                /root/.acme.sh/acme.sh --installcert -d "$domain" --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc || print_error "Gagal menginstal sertifikat DNS-01 untuk $domain."
+                chmod 600 /etc/xray/xray.key
+                mkdir -p /etc/haproxy
+                cat /etc/xray/xray.crt /etc/xray/xray.key > /etc/haproxy/hap.pem
+                chmod 600 /etc/haproxy/hap.pem
+                print_ok "pasang_ssl SELESAI (DNS-01)"
+                return
+            else
+                print_ok "DNS-01 gagal, lanjut ke HTTP-01 standalone."
+            fi
+        fi
+    fi
     print_ok "Menerbitkan sertifikat SSL..."
     /root/.acme.sh/acme.sh --issue -d $domain --standalone -k ec-256 || print_error "Gagal menerbitkan sertifikat SSL untuk $domain."
     ~/.acme.sh/acme.sh --installcert -d $domain --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc || print_error "Gagal menginstal sertifikat SSL untuk $domain."
@@ -466,9 +536,12 @@ function make_folder_xray() {
     mkdir -p /etc/files/trojan
     mkdir -p /etc/files/ssh
     chmod +x /var/log/xray
+    # 2026-10-23 xmr12: service Xray jalan sebagai www-data; log milik root gagal ditulis (exit 23)
+    chown www-data:www-data /var/log/xray 2>/dev/null || true
     touch /etc/xray/domain
     touch /var/log/xray/access.log
     touch /var/log/xray/error.log
+    chown www-data:www-data /var/log/xray/access.log /var/log/xray/error.log 2>/dev/null || true
     touch /etc/vmess/.vmess.db
     touch /etc/vless/.vless.db
     touch /etc/trojan/.trojan.db
@@ -533,7 +606,7 @@ function install_xray() {
         print_error "Gagal mengekstrak ${XRAY_ZIP}"
         exit 1
     }
-    install -m 755 /tmp/xray-extract/xray /usr/local/bin/xray
+    cp /tmp/xray-extract/xray /usr/local/bin/xray && chmod 755 /usr/local/bin/xray  # 2026-10-23 xmr12: jangan pakai perintah install mentah, membayangi fungsi install()
     cp /tmp/xray-extract/geoip.dat /usr/local/share/xray/geoip.dat
     cp /tmp/xray-extract/geosite.dat /usr/local/share/xray/geosite.dat
     chmod 644 /usr/local/share/xray/geoip.dat /usr/local/share/xray/geosite.dat
@@ -609,6 +682,12 @@ LimitNOFILE=1000000
 [Install]
 WantedBy=multi-user.target
 EOF
+    # 2026-10-23 xmr12: pastikan geoip/geosite ada sebelum service pertama kali jalan, dan uji config sebelum enable
+    mkdir -p /usr/local/share/xray
+    [ -s /usr/local/share/xray/geoip.dat ] || wget --timeout=30 --tries=2 -q -O /usr/local/share/xray/geoip.dat "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat" || print_error "Gagal mengunduh geoip.dat."
+    [ -s /usr/local/share/xray/geosite.dat ] || wget --timeout=30 --tries=2 -q -O /usr/local/share/xray/geosite.dat "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat" || print_error "Gagal mengunduh geosite.dat."
+    /usr/local/bin/xray run -test -config /etc/xray/config.json >/dev/null 2>&1 || print_error "Config Xray tidak valid sebelum enable."
+    chown www-data:www-data /var/log/xray /var/log/xray/access.log /var/log/xray/error.log 2>/dev/null || true
     print_success "Konfigurasi Packet"
     print_ok "install_xray SELESAI"
 }
@@ -1404,7 +1483,7 @@ function install_openvpn() {
 }
 
 # --- Fungsi Utama Install ---
-function install(){
+function install_main(){
     print_install "MENJALANKAN FUNGSI INSTALL UTAMA"
     clear
     pasang_domain
@@ -1438,12 +1517,13 @@ function install(){
 
 # --- Bagian Akhir Skrip ---
 print_ok "MEMULAI PROSES INSTALASI"
-install
+install_main
 
 # --- Final Cleanup ---
 print_ok "MEMULAI FINAL CLEANUP"
 history -c
-rm -f /root/openvpn /root/openvpn_setup.sh /root/key.pem /root/cert.pem /root/bbr.sh /root/limit.sh /root/random.sh /root/menu.zip /root/domain
+rm -f /root/openvpn /root/openvpn_setup.sh /root/key.pem /root/cert.pem /root/bbr.sh /root/limit.sh /root/random.sh /root/menu.zip
+# 2026-10-23 xmr12: /root/domain TIDAK dihapus (dibutuhkan renew + run ulang)
 
 # --- Final Output and Reboot ---
 clear
@@ -1453,10 +1533,12 @@ echo -e "\033[92m        INSTALL SUCCESS\033[0m"
 echo -e "\033[96m===============================\033[0m"
 echo -e ""
 print_ok "SETUP SELESAI"
-print_ok "Sistem akan reboot sekarang secara otomatis..."
 print_ok "\033[93mSystem setup is complete.\033[0m"
-print_ok "\033[93mRebooting server in 5 seconds...\033[0m"
-
-sleep 5
-
-reboot
+print_ok "Reboot akhir opsional: set AUTO_REBOOT=1 saat install untuk reboot otomatis, atau reboot manual setelah ini."
+if [ "${AUTO_REBOOT:-0}" = "1" ]; then
+    print_ok "Rebooting server in 5 seconds (AUTO_REBOOT=1)..."
+    sleep 5
+    reboot
+else
+    print_ok "Reboot dilewati (AUTO_REBOOT tidak di-set)."
+fi
