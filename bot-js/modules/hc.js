@@ -169,7 +169,7 @@ async function generateHC(opts) {
     return { success: false, message: 'Service tidak didukung untuk .hc.' };
   }
 
-  const fileBase = ('wendyvpn-' + presetId + '-' + username).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const fileBase = (username + '-' + presetId).toLowerCase().replace(/[^a-z0-9_-]/g, '');
   let mainConnections = {};
   let profiles = [];
 
@@ -214,14 +214,14 @@ async function generateHC(opts) {
       manual.password = cred;
     }
     profiles = [{
-      profile_name: 'WENDYVPN ' + service.toUpperCase() + ' ' + username,
+      profile_name: username,
       manual: manual,
     }];
   }
 
   const reqBody = {
     file_name: fileBase,
-    powered_by: 'WENDYVPN',
+    powered_by: 'RIPZZ',
     main_connections: mainConnections,
     profiles: profiles,
     protection: { content_access: 'lock_all' },
