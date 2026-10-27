@@ -445,6 +445,9 @@ bot.action(/^cf_trial_proto_(.+)$/, (ctx) => trialProtoPick(ctx, ctx.match[1], t
 async function finishTrialVpn(ctx, sess, username, password = '') {
   sessions.delete(ctx.chat.id);
   const { proto, viaCF } = sess;
+  if (await vpn.usernameTaken(proto, username).catch(() => false)) {
+    return ctx.reply('❌ Username sudah dipakai untuk ' + proto.toUpperCase() + '. Pakai nama lain.');
+  }
   if (!(await vpn.canClaimTrial(ctx.from.id).catch(() => false))) {
     return ctx.reply('❌ Kamu sudah klaim trial dalam 24 jam terakhir. Coba lagi besok.');
   }
@@ -723,6 +726,9 @@ bot.on('text', async (ctx) => {
     const username = ctx.message.text.trim();
     if (!vpn.validUser(username)) {
       return ctx.reply('❌ Username tidak valid (3-20 karakter, huruf/angka). Coba lagi:');
+    }
+    if (await vpn.usernameTaken(sess.proto, username).catch(() => false)) {
+      return ctx.reply('❌ Username sudah dipakai untuk ' + sess.proto.toUpperCase() + '. Pakai nama lain:');
     }
     if (sess.proto === 'ssh' || sess.proto === 'zivpn') {
       sess.data = { username };
@@ -1193,6 +1199,9 @@ bot.on('text', async (ctx) => {
 async function finishCreateVpn(ctx, sess, username, password = '', days = 30) {
   sessions.delete(ctx.chat.id);
   const { proto, viaCF } = sess;
+  if (await vpn.usernameTaken(proto, username).catch(() => false)) {
+    return ctx.reply('❌ Username sudah dipakai untuk ' + proto.toUpperCase() + '. Pakai nama lain.');
+  }
   // Harga VPN per role (diatur admin di tabel vpn_prices; role admin = 0/modal)
   const role = await ppob.getRole(ctx.from.id).catch(() => 'member');
   const perDay = await vpn.getVpnPrice(proto, role, viaCF);
@@ -2992,7 +3001,7 @@ bot.command('cleanup', async (ctx) => {
 });
 
 // ---------- Auto-cleanup harian (cron dalam proses) ----------
-setInterval(async () => {
+async function cleanupOnce() {
   try {
     await cleanup.cleanupOldTrials();
     await cleanup.cleanupExpired(async (acc) => {
@@ -3005,7 +3014,8 @@ setInterval(async () => {
   } catch (e) {
     console.error('[cleanup] error:', e.message);
   }
-}, 24 * 60 * 60 * 1000); // tiap 24 jam (cleanup lama, tidak diubah)
+}
+setInterval(cleanupOnce, 24 * 60 * 60 * 1000); // tiap 24 jam
 
 // ---------- Sweeper trial 1 jam (baru, tiap 5 menit + sekali saat start) ----------
 async function sweepTrialsOnce() {
@@ -3218,6 +3228,9 @@ bot.command('restoredb', async (ctx) => {
 });
 
 bot.launch();
+// Cleanup juga saat start (restart tak lagi menunda cleanup harian 24 jam;
+// jeda 90 detik agar koneksi Telegram siap sebelum notifikasi dikirim).
+setTimeout(cleanupOnce, 90 * 1000);
   console.log('🤖 Bot RIPZZ berjalan (@Notif2Ajibot)');
 })();
 
