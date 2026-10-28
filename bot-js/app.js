@@ -99,11 +99,10 @@ async function sendMenuPhoto(ctx, imageFile, caption, keyboard) {
 const mainMenu = (isAdmin = false, isReseller = false) => {
   const rows = [
     [sBtn('🌐 Menu VPN', 'menu_vpn_home', 'success')],
-    [sBtn('🛒 Menu PPOB', 'menu_ppob', 'primary')],
+    [sBtn('🛒 Menu PPOB', 'menu_ppob', 'primary'), sBtn('🚀 Cek Kuota XL/AXIS', 'menu_kuota', 'primary')],
+    [sBtn('👤 Akun Saya', 'menu_akun', 'primary'), sBtn('📜 Sewa Script', 'menu_sewa', 'primary')],
+    [sBtn('📊 Cek Statistik', 'menu_stat', 'primary'), sBtn('📝 Riwayat Transaksi', 'menu_riwayat', 'primary')],
     [sBtn('💰 TopUp Saldo', 'ppob_deposit', 'success')],
-    [sBtn('📝 Riwayat Transaksi', 'menu_riwayat', 'primary'), sBtn('📊 Cek Statistik', 'menu_stat', 'primary')],
-    [sBtn('🚀 Cek Kuota XL/AXIS', 'menu_kuota', 'primary'), sBtn('📜 Sewa Script', 'menu_sewa', 'primary')],
-    [sBtn('👤 Akun Saya', 'menu_akun', 'primary')],
   ];
   if (isReseller) rows.push([sBtn('🏪 Panel Reseller', 'menu_reseller', 'success')]);
   if (isAdmin) rows.push([sBtn('🛠️ Panel Admin', 'adm_open', 'danger')]);
