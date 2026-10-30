@@ -8,7 +8,7 @@ date_list=$(date +"%Y-%m-%d" -d "$dateFromServer")
 clear
 
 # Konfigurasi repo dan variabel
-Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
+Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
 
@@ -39,8 +39,8 @@ function send_log() {
 # Membuat direktori dan mengunduh daftar IP
 today=$(date -d "0 days" +"%Y-%m-%d")
 rm -rf /root/ipvps
-mkdir -p /root/ipvps
-wget --timeout=30 --tries=2 -q -O /root/ipvps/ip "${Repo1}" &> /dev/null || { echo "Failed to download IP list"; exit 1; }
+mkdir -p /root/ipvps/main
+wget --timeout=30 --tries=2 -q -O /root/ipvps/main/ip "${Repo1}" &> /dev/null || { echo "Failed to download IP list"; exit 1; }
 
 # Meminta input dari pengguna
 read -p "  Input IP Address : " ip
@@ -49,10 +49,10 @@ read -p "  Input Expired Days : " exp
 
 if [[ ${exp} == 'lifetime' ]]; then
     exp2="lifetime"
-    sed -i '/#unli$/a\#& '"$name $exp2 $ip"'' /root/ipvps/ip  
+    sed -i '/#unli$/a\#& '"$name $exp2 $ip"'' /root/ipvps/main/ip  
 else
     exp2=$(date -d "$exp days" +"%Y-%m-%d")
-    sed -i '/#limit$/a\### '"$name $exp2 $ip"'' /root/ipvps/ip
+    sed -i '/#limit$/a\### '"$name $exp2 $ip"'' /root/ipvps/main/ip
 fi
 
 # Mengatur git dan mengunggah perubahan

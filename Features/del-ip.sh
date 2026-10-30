@@ -18,7 +18,7 @@ date_list=$(date +"%Y-%m-%d" -d "$dateFromServer")
 
 # Konfigurasi repo dan variabel
 REPO="https://github.com/ajijainalganteng-wq/WendyVpn.git"
-REPO2="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
+REPO2="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
 
@@ -30,21 +30,21 @@ URL="https://api.telegram.org/bot$KEY/sendMessage"
 
 # Membersihkan dan membuat direktori
 rm -rf /root/ipvps
-mkdir -p /root/ipvps
-wget --timeout=30 --tries=2 -q -O /root/ipvps/ip "${REPO2}" &> /dev/null || { echo "Failed to download IP list"; exit 1; }
+mkdir -p /root/ipvps/main
+wget --timeout=30 --tries=2 -q -O /root/ipvps/main/ip "${REPO2}" &> /dev/null || { echo "Failed to download IP list"; exit 1; }
 
 # Meminta input dari pengguna
 read -p "   Input User : " name
 
 # Mencari nama dan tanggal kedaluwarsa berdasarkan IP
-ip=$(grep "$name" /root/ipvps/ip | awk '{print $4}')
-exp=$(grep "$name" /root/ipvps/ip | awk '{print $3}')
+ip=$(grep "$name" /root/ipvps/main/ip | awk '{print $4}')
+exp=$(grep "$name" /root/ipvps/main/ip | awk '{print $3}')
 
 # Menghapus entri IP dari file
 if [[ ${exp} == 'lifetime' ]]; then
-    sed -i "/^#& $name $exp $ip/d" /root/ipvps/ip
+    sed -i "/^#& $name $exp $ip/d" /root/ipvps/main/ip
 else
-    sed -i "/^### $name $exp $ip/d" /root/ipvps/ip
+    sed -i "/^### $name $exp $ip/d" /root/ipvps/main/ip
 fi
 
 # Mengunggah perubahan ke GitHub

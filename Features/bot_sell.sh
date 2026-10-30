@@ -1,7 +1,7 @@
 #!/bin/bash
 function checking_sc() {
     MYIP=$(curl --connect-timeout 30 -sS ipv4.icanhazip.com)
-    IZIN=$(curl --connect-timeout 30 -sS https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | awk '{print $4}')
+    IZIN=$(curl --connect-timeout 30 -sS https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip | awk '{print $4}')
 
     if echo "$IZIN" | grep -wq "$MYIP"; then
         echo "IZIN DITERIMA "

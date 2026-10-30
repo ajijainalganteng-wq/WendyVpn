@@ -4,7 +4,7 @@ biji=`date +"%Y-%m-%d" -d "$dateFromServer"`
 NC="\e[0m"
 RED="\033[0;31m"
 MYIP=$(curl --connect-timeout 30 -sS ipv4.icanhazip.com)
-Name=$(curl --connect-timeout 30 -sS https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip | grep $MYIP | awk '{print $2}')
+Name=$(curl --connect-timeout 30 -sS https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip | grep $MYIP | awk '{print $2}')
 echo $Name > /usr/local/etc/.$Name.ini
 CekOne=$(cat /usr/local/etc/.$Name.ini)
 red='\e[1;31m'

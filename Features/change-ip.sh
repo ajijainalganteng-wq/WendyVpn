@@ -2,7 +2,7 @@
 export HOME=/root
 export TERM=xterm
 NC='\e[0m'
-Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
+Repo1="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
 git="git@github.com:ajijainalganteng-wq/WendyVpn.git"
@@ -19,8 +19,8 @@ clear
 
 # Create and prepare the ipvps directory
 rm -rf /root/ipvps
-mkdir -p /root/ipvps
-wget --timeout=30 --tries=2 -q -O /root/ipvps/ip "${Repo1}" &> /dev/null
+mkdir -p /root/ipvps/main
+wget --timeout=30 --tries=2 -q -O /root/ipvps/main/ip "${Repo1}" &> /dev/null
 
 # Prompt for old and new IP
 read -p "  Input IP Lama/Old: " ip1
@@ -31,7 +31,7 @@ name=$(curl --connect-timeout 30 -sS ${Repo1} | grep $ip1 | awk '{print $2}')
 exp=$(curl --connect-timeout 30 -sS ${Repo1} | grep $ip1 | awk '{print $3}')
 
 # Replace the old IP with the new one
-sed -i "s/^### $name $exp $ip1/### $name $exp $ip2/g" /root/ipvps/ip
+sed -i "s/^### $name $exp $ip1/### $name $exp $ip2/g" /root/ipvps/main/ip
 
 # Commit and push changes to GitHub
 cd /root/ipvps

@@ -12,7 +12,7 @@ BGX="\033[42m"
 END='\e[0m'
 
 # Konfigurasi
-REPO="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/ip"
+REPO="https://raw.githubusercontent.com/ajijainalganteng-wq/WendyVpn/main/main/ip"
 EMAIL="bowowiwendi@gmail.com"
 USER="bowowiwendi"
 TIMES="10"
@@ -28,8 +28,8 @@ URL="https://api.telegram.org/bot$KEY/sendMessage"
 
 # Bersihkan direktori dan buat yang baru
 rm -rf /root/ipvps
-mkdir -p /root/ipvps
-wget --timeout=30 --tries=2 -q -O /root/ipvps/ip "${REPO}" &> /dev/null
+mkdir -p /root/ipvps/main
+wget --timeout=30 --tries=2 -q -O /root/ipvps/main/ip "${REPO}" &> /dev/null
 
 # Input dari pengguna
 read -p "  Input User  : " user
@@ -45,7 +45,7 @@ exp3=$(($exp2 + $days))
 exp4=$(date -d "$exp3 days" +"%Y-%m-%d")
 
 # Perbarui tanggal kedaluwarsa di file IP
-sed -i "s/^### $user $exp $ip/### $user $exp4 $ip/g" /root/ipvps/ip
+sed -i "s/^### $user $exp $ip/### $user $exp4 $ip/g" /root/ipvps/main/ip
 
 # Commit dan push perubahan ke GitHub
 cd /root/ipvps
